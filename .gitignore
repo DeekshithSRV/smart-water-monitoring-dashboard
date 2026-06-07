@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.log
+*.zip
+
+# Local Arduino credentials. Keep real WiFi passwords off GitHub.
+ESP32_MPU_6050_Web_Server/secrets.h
+esp32/secrets.h
+
+# Old scratch/export files
+backend/codes.txt
