@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T.Deekshith Kumar Live Water Dashboard</title>
+<link rel="stylesheet" href="./style.css">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+<div>
+<div class="eyebrow">GitHub Pages Live Console</div>
+<h1>T.Deekshith Kumar</h1>
+<p>Smart Water Monitoring Dashboard</p>
+</div>
+<div class="status-card">
+<span>ESP32</span>
+<strong id="systemStatus">CONNECTING</strong>
+</div>
+</header>
+
+<section class="mode-panel">
+<div>
+<span>Viewer Mode</span>
+<strong>Everyone can see live data</strong>
+</div>
+<div id="adminBox" class="admin-box">
+<input id="adminPassword" type="password" placeholder="Admin password">
+<button id="adminLoginBtn" onclick="loginAdmin()">ADMIN LOGIN</button>
+<button id="adminLogoutBtn" onclick="logoutAdmin()" hidden>LOGOUT</button>
+</div>
+</section>
+
+<section class="dashboard">
+<div class="card water-card">
+<span>Water Level</span>
+<strong id="waterLevel">0%</strong>
+</div>
+<div class="card pump-card">
+<span>Pump</span>
+<strong id="pumpStatus" class="off">OFF</strong>
+<div class="controls admin-only">
+<button class="btn-on" onclick="control('pump','ON')">ON</button>
+<button class="btn-off" onclick="control('pump','OFF')">OFF</button>
+</div>
+</div>
+<div class="card light-card">
+<span>Light</span>
+<strong id="lightStatus" class="off">OFF</strong>
+<div class="controls admin-only">
+<button class="btn-on" onclick="control('light','ON')">ON</button>
+<button class="btn-off" onclick="control('light','OFF')">OFF</button>
+</div>
+</div>
+<div class="card fan-card">
+<span>Fan</span>
+<strong id="fanStatus" class="off">OFF</strong>
+<div class="controls admin-only">
+<button class="btn-on" onclick="control('fan','ON')">ON</button>
+<button class="btn-off" onclick="control('fan','OFF')">OFF</button>
+</div>
+</div>
+</section>
+
+<main class="main-grid">
+<section class="tank-panel">
+<div class="tank-head">
+<h2>Storage Tank</h2>
+<strong id="tankStatus">UNKNOWN</strong>
+</div>
+<div class="tank">
+<div id="waterFill" class="water"></div>
+<div class="limit-line"><span>90% FULL</span></div>
+<div id="tankText" class="water-text">0%</div>
+</div>
+<div class="tank-actions admin-only">
+<button class="btn-empty" onclick="emptyTank()">EMPTY TANK</button>
+<button class="btn-stop" onclick="stopSiren()">STOP SIREN</button>
+</div>
+<div id="sirenAlert" class="siren-alert">
+<strong>Tank Full Siren Active</strong>
+<button class="btn-stop admin-only" onclick="stopSiren()">STOP</button>
+</div>
+</section>
+
+<section class="chart-panel">
+<h2>Live Water Trend</h2>
+<canvas id="waterChart"></canvas>
+<div id="message" class="message">Connecting to public MQTT broker...</div>
+</section>
+</main>
+
+<footer>
+<span>MQTT: broker.hivemq.com / WebSocket 8884</span>
+<span>Device: <strong id="deviceId">waiting...</strong></span>
+</footer>
+</div>
+
+<script src="./script.js"></script>
+</body>
+</html>

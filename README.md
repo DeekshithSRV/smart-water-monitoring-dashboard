@@ -11,6 +11,7 @@ Live ESP32 water-tank monitoring and control dashboard built with Flask, Socket.
 - Manual empty tank action.
 - Dashboard siren for full tank warning.
 - Team sharing through LAN or ngrok public tunnel.
+- GitHub Pages live dashboard using MQTT over WebSocket.
 
 ## Project Structure
 
@@ -59,6 +60,27 @@ Start public dashboard using ngrok:
 ```bash
 ./start_public_tunnel.sh
 ```
+
+
+## GitHub Pages Live Dashboard
+
+The `docs/` folder is a static dashboard for GitHub Pages. It connects directly to:
+
+```text
+wss://broker.hivemq.com:8884/mqtt
+```
+
+The ESP32 publishes to `broker.hivemq.com` on MQTT port `1883`. When the ESP32 connects to WiFi, the GitHub Pages dashboard receives the live data automatically.
+
+Viewer mode can see live data only. Admin mode unlocks control buttons on the page.
+
+Demo admin password:
+
+```text
+1234
+```
+
+For a college demo this is fine, but for real security use a backend with proper login because static GitHub Pages cannot fully protect secrets.
 
 ## MQTT Topics
 

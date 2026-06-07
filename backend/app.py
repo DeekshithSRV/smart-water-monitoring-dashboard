@@ -10,7 +10,7 @@ import paho.mqtt.client as mqtt
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OLD_TOPIC_PREFIX = "shaik/water_system"
-MQTT_BROKER = os.getenv("MQTT_BROKER", "10.105.116.191")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.hivemq.com")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 APP_PORT = int(os.getenv("PORT", "5001"))
 PUBLIC_URL = os.getenv("PUBLIC_URL", "")
