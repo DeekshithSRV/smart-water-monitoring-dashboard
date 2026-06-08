@@ -82,6 +82,22 @@ Demo admin password:
 
 For a college demo this is fine, but for real security use a backend with proper login because static GitHub Pages cannot fully protect secrets.
 
+
+## AI/ML Command Mapping
+
+The ESP32 and GitHub dashboard use these command words:
+
+```text
+UP    -> Light ON
+DOWN  -> Light OFF
+LEFT  -> Fan ON
+RIGHT -> Fan OFF
+PUSH  -> Pump ON
+PULL  -> Pump OFF
+```
+
+In Arduino Serial Monitor, select `1`, `2`, or `3`, then type the mapped command. Direct commands also work.
+
 ## MQTT Topics
 
 The ESP32 publishes under:

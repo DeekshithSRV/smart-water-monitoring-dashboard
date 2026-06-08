@@ -89,16 +89,19 @@ client.on("message", (topic, payload) => {
 
   if (topic.endsWith("/pump/status")) {
     setPump(value.toUpperCase());
+    setCommandText("pumpCommand", value.toUpperCase() === "ON" ? "PUSH" : "PULL");
     return;
   }
 
   if (topic.endsWith("/light/status")) {
     setOnOff("lightStatus", value);
+    setCommandText("lightCommand", value.toUpperCase() === "ON" ? "UP" : "DOWN");
     return;
   }
 
   if (topic.endsWith("/fan/status")) {
     setOnOff("fanStatus", value);
+    setCommandText("fanCommand", value.toUpperCase() === "ON" ? "LEFT" : "RIGHT");
     return;
   }
 
@@ -150,20 +153,39 @@ function setOnOff(id, value) {
   el.className = normalized === "ON" ? "on" : "off";
 }
 
+function setCommandText(id, command) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = `${command} command activated`;
+  }
+}
+
+function showCommandForDevice(device, command) {
+  const target = {
+    light: "lightCommand",
+    fan: "fanCommand",
+    pump: "pumpCommand",
+  }[device];
+  if (target) {
+    setCommandText(target, command);
+  }
+}
+
 function control(device, state) {
   if (!isAdmin) {
     setMessage("Viewer mode only. Admin login is required for controls.");
     return;
   }
 
-  if (device === "pump" && state === "ON" && (tankState === "FULL" || currentWater >= FULL_LIMIT)) {
+  if (device === "pump" && state === "PUSH" && (tankState === "FULL" || currentWater >= FULL_LIMIT)) {
     setMessage("Tank is full. Manual pump ON is blocked.");
-    client.publish(`${TOPIC_PREFIX}/actions/pump`, "OFF");
+    client.publish(`${TOPIC_PREFIX}/actions/pump`, "PULL");
     return;
   }
 
   client.publish(`${TOPIC_PREFIX}/actions/${device}`, state);
-  setMessage(`Admin command sent: ${device.toUpperCase()} ${state}`);
+  showCommandForDevice(device, state);
+  setMessage(`${state} command activated for ${device.toUpperCase()}.`);
 }
 
 function emptyTank() {

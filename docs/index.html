@@ -42,25 +42,28 @@
 <div class="card pump-card">
 <span>Pump</span>
 <strong id="pumpStatus" class="off">OFF</strong>
+<small id="pumpCommand" class="command-line">PULL command activated</small>
 <div class="controls admin-only">
-<button class="btn-on" onclick="control('pump','ON')">ON</button>
-<button class="btn-off" onclick="control('pump','OFF')">OFF</button>
+<button class="btn-on" onclick="control('pump','PUSH')">PUSH</button>
+<button class="btn-off" onclick="control('pump','PULL')">PULL</button>
 </div>
 </div>
 <div class="card light-card">
 <span>Light</span>
 <strong id="lightStatus" class="off">OFF</strong>
+<small id="lightCommand" class="command-line">DOWN command activated</small>
 <div class="controls admin-only">
-<button class="btn-on" onclick="control('light','ON')">ON</button>
-<button class="btn-off" onclick="control('light','OFF')">OFF</button>
+<button class="btn-on" onclick="control('light','UP')">UP</button>
+<button class="btn-off" onclick="control('light','DOWN')">DOWN</button>
 </div>
 </div>
 <div class="card fan-card">
 <span>Fan</span>
 <strong id="fanStatus" class="off">OFF</strong>
+<small id="fanCommand" class="command-line">RIGHT command activated</small>
 <div class="controls admin-only">
-<button class="btn-on" onclick="control('fan','ON')">ON</button>
-<button class="btn-off" onclick="control('fan','OFF')">OFF</button>
+<button class="btn-on" onclick="control('fan','LEFT')">LEFT</button>
+<button class="btn-off" onclick="control('fan','RIGHT')">RIGHT</button>
 </div>
 </div>
 </section>

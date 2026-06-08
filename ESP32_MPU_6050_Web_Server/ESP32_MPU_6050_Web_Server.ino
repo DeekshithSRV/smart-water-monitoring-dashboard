@@ -24,9 +24,14 @@ bool tankFull = false;
 bool lightState = false;
 bool fanState = false;
 bool pumpState = false;
+int waterLevel = 0;
+
+const int TANK_FULL_LIMIT = 90;
+const int FILL_STEP = 2;
 
 int selectedDevice = 0;
 unsigned long lastHeartbeat = 0;
+unsigned long lastFillUpdate = 0;
 
 void publishAck(const char* message)
 {
@@ -43,53 +48,59 @@ void publishDeviceStates()
   mqttClient.publish(lightStatusTopic.c_str(), lightState ? "ON" : "OFF", true);
   mqttClient.publish(fanStatusTopic.c_str(), fanState ? "ON" : "OFF", true);
   mqttClient.publish(pumpStatusTopic.c_str(), pumpState ? "ON" : "OFF", true);
-  mqttClient.publish(tankTopic.c_str(), tankFull ? "FULL" : "EMPTY", true);
-  mqttClient.publish(waterLevelTopic.c_str(), tankFull ? "90" : "0", true);
+  mqttClient.publish(tankTopic.c_str(), tankFull ? "FULL" : (waterLevel > 0 ? "FILLING" : "EMPTY"), true);
+  mqttClient.publish(waterLevelTopic.c_str(), String(waterLevel).c_str(), true);
 }
 
 void printMenu()
 {
   Serial.println();
   Serial.println("===== MENU =====");
-  Serial.println("1. LIGHT");
-  Serial.println("2. FAN");
-  Serial.println("3. PUMP");
-  Serial.println("4. TANK");
+  Serial.println("1. LIGHT  -> UP = ON, DOWN = OFF");
+  Serial.println("2. FAN    -> LEFT = ON, RIGHT = OFF");
+  Serial.println("3. PUMP   -> PUSH = ON, PULL = OFF");
+  Serial.println("4. TANK   -> FULL or EMPTY");
   Serial.println("5. STATUS");
   Serial.println();
-  Serial.println("Select Device:");
+  Serial.println("Select Device 1/2/3/4/5, then enter the command:");
+  Serial.println("Direct commands also work: UP, DOWN, LEFT, RIGHT, PUSH, PULL");
 }
 
 void setLight(bool enabled)
 {
   lightState = enabled;
   mqttClient.publish(lightStatusTopic.c_str(), enabled ? "ON" : "OFF", true);
-  publishAck(enabled ? "LIGHT ON" : "LIGHT OFF");
-  Serial.println(enabled ? "LIGHT ON" : "LIGHT OFF");
+  publishAck(enabled ? "UP COMMAND ACTIVATED - LIGHT ON" : "DOWN COMMAND ACTIVATED - LIGHT OFF");
+  Serial.println(enabled ? "UP COMMAND ACTIVATED -> LIGHT ON" : "DOWN COMMAND ACTIVATED -> LIGHT OFF");
 }
 
 void setFan(bool enabled)
 {
   fanState = enabled;
   mqttClient.publish(fanStatusTopic.c_str(), enabled ? "ON" : "OFF", true);
-  publishAck(enabled ? "FAN ON" : "FAN OFF");
-  Serial.println(enabled ? "FAN ON" : "FAN OFF");
+  publishAck(enabled ? "LEFT COMMAND ACTIVATED - FAN ON" : "RIGHT COMMAND ACTIVATED - FAN OFF");
+  Serial.println(enabled ? "LEFT COMMAND ACTIVATED -> FAN ON" : "RIGHT COMMAND ACTIVATED -> FAN OFF");
 }
 
 void setPump(bool enabled)
 {
-  if (enabled && tankFull)
+  if (enabled && (tankFull || waterLevel >= TANK_FULL_LIMIT))
   {
     pumpState = false;
-    publishAck("PUMP BLOCKED - TANK FULL");
-    Serial.println("ERROR: PUMP BLOCKED - TANK FULL");
+    mqttClient.publish(pumpStatusTopic.c_str(), "OFF", true);
+    publishAck("PUSH COMMAND BLOCKED - TANK FULL");
+    Serial.println("ERROR: PUSH COMMAND BLOCKED - TANK FULL");
     return;
   }
 
   pumpState = enabled;
+  if (enabled)
+    tankFull = false;
+
   mqttClient.publish(pumpStatusTopic.c_str(), enabled ? "ON" : "OFF", true);
-  publishAck(enabled ? "PUMP ON" : "PUMP OFF");
-  Serial.println(enabled ? "PUMP ON" : "PUMP OFF");
+  mqttClient.publish(tankTopic.c_str(), enabled ? "FILLING" : (tankFull ? "FULL" : (waterLevel > 0 ? "PARTIAL" : "EMPTY")), true);
+  publishAck(enabled ? "PUSH COMMAND ACTIVATED - PUMP ON" : "PULL COMMAND ACTIVATED - PUMP OFF");
+  Serial.println(enabled ? "PUSH COMMAND ACTIVATED -> PUMP ON" : "PULL COMMAND ACTIVATED -> PUMP OFF");
 }
 
 void setTank(bool full)
@@ -99,8 +110,9 @@ void setTank(bool full)
   if (tankFull)
   {
     pumpState = false;
+    waterLevel = TANK_FULL_LIMIT;
     mqttClient.publish(tankTopic.c_str(), "FULL", true);
-    mqttClient.publish(waterLevelTopic.c_str(), "90", true);
+    mqttClient.publish(waterLevelTopic.c_str(), String(waterLevel).c_str(), true);
     mqttClient.publish(pumpStatusTopic.c_str(), "OFF", true);
     publishAck("PUMP OFF");
     publishAck("TANK FULL");
@@ -108,8 +120,11 @@ void setTank(bool full)
     return;
   }
 
+  pumpState = false;
+  waterLevel = 0;
   mqttClient.publish(tankTopic.c_str(), "EMPTY", true);
-  mqttClient.publish(waterLevelTopic.c_str(), "0", true);
+  mqttClient.publish(waterLevelTopic.c_str(), String(waterLevel).c_str(), true);
+  mqttClient.publish(pumpStatusTopic.c_str(), "OFF", true);
   publishAck("TANK EMPTY");
   Serial.println("TANK EMPTY");
 }
@@ -149,19 +164,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
 
   if (t == lightTopic)
   {
-    setLight(msg == "ON");
+    setLight(msg == "UP" || msg == "ON");
     return;
   }
 
   if (t == fanTopic)
   {
-    setFan(msg == "ON");
+    setFan(msg == "LEFT" || msg == "ON");
     return;
   }
 
   if (t == pumpTopic)
   {
-    setPump(msg == "ON");
+    setPump(msg == "PUSH" || msg == "ON");
     return;
   }
 
@@ -223,7 +238,10 @@ void printStatus()
   Serial.print("MQTT : ");
   Serial.println(mqttClient.connected() ? "ONLINE" : "OFFLINE");
   Serial.print("Tank : ");
-  Serial.println(tankFull ? "FULL" : "EMPTY");
+  Serial.println(tankFull ? "FULL" : (waterLevel > 0 ? "FILLING/PARTIAL" : "EMPTY"));
+  Serial.print("Water : ");
+  Serial.print(waterLevel);
+  Serial.println("%");
   Serial.print("Light : ");
   Serial.println(lightState ? "ON" : "OFF");
   Serial.print("Fan : ");
@@ -241,42 +259,42 @@ void handleSerialInput(String input)
   input.replace(":", " ");
   input.replace("-", " ");
 
-  if (input == "LIGHT ON" || input == "L ON")
+  if (input == "UP" || input == "LIGHT UP" || input == "LIGHT ON" || input == "L ON")
   {
     setLight(true);
     printMenu();
     return;
   }
 
-  if (input == "LIGHT OFF" || input == "L OFF")
+  if (input == "DOWN" || input == "LIGHT DOWN" || input == "LIGHT OFF" || input == "L OFF")
   {
     setLight(false);
     printMenu();
     return;
   }
 
-  if (input == "FAN ON" || input == "F ON")
+  if (input == "LEFT" || input == "FAN LEFT" || input == "FAN ON" || input == "F ON")
   {
     setFan(true);
     printMenu();
     return;
   }
 
-  if (input == "FAN OFF" || input == "F OFF")
+  if (input == "RIGHT" || input == "FAN RIGHT" || input == "FAN OFF" || input == "F OFF")
   {
     setFan(false);
     printMenu();
     return;
   }
 
-  if (input == "PUMP ON" || input == "P ON")
+  if (input == "PUSH" || input == "PUMP PUSH" || input == "PUMP ON" || input == "P ON")
   {
     setPump(true);
     printMenu();
     return;
   }
 
-  if (input == "PUMP OFF" || input == "P OFF")
+  if (input == "PULL" || input == "PUMP PULL" || input == "PUMP OFF" || input == "P OFF")
   {
     setPump(false);
     printMenu();
@@ -301,7 +319,7 @@ void handleSerialInput(String input)
   {
     selectedDevice = 1;
     Serial.println("LIGHT Selected");
-    Serial.println("Type ON or OFF");
+    Serial.println("Type UP for LIGHT ON or DOWN for LIGHT OFF");
     return;
   }
 
@@ -309,7 +327,7 @@ void handleSerialInput(String input)
   {
     selectedDevice = 2;
     Serial.println("FAN Selected");
-    Serial.println("Type ON or OFF");
+    Serial.println("Type LEFT for FAN ON or RIGHT for FAN OFF");
     return;
   }
 
@@ -317,7 +335,7 @@ void handleSerialInput(String input)
   {
     selectedDevice = 3;
     Serial.println("PUMP Selected");
-    Serial.println("Type ON or OFF");
+    Serial.println("Type PUSH for PUMP ON or PULL for PUMP OFF");
     return;
   }
 
@@ -338,8 +356,12 @@ void handleSerialInput(String input)
 
   if (selectedDevice == 1)
   {
-    if (input == "ON" || input == "OFF")
-      setLight(input == "ON");
+    if (input == "UP" || input == "ON")
+      setLight(true);
+    else if (input == "DOWN" || input == "OFF")
+      setLight(false);
+    else
+      Serial.println("Invalid LIGHT command. Use UP or DOWN.");
 
     printMenu();
     return;
@@ -347,8 +369,12 @@ void handleSerialInput(String input)
 
   if (selectedDevice == 2)
   {
-    if (input == "ON" || input == "OFF")
-      setFan(input == "ON");
+    if (input == "LEFT" || input == "ON")
+      setFan(true);
+    else if (input == "RIGHT" || input == "OFF")
+      setFan(false);
+    else
+      Serial.println("Invalid FAN command. Use LEFT or RIGHT.");
 
     printMenu();
     return;
@@ -356,8 +382,12 @@ void handleSerialInput(String input)
 
   if (selectedDevice == 3)
   {
-    if (input == "ON" || input == "OFF")
-      setPump(input == "ON");
+    if (input == "PUSH" || input == "ON")
+      setPump(true);
+    else if (input == "PULL" || input == "OFF")
+      setPump(false);
+    else
+      Serial.println("Invalid PUMP command. Use PUSH or PULL.");
 
     printMenu();
     return;
@@ -370,6 +400,36 @@ void handleSerialInput(String input)
 
     printMenu();
   }
+}
+
+void updateTankFilling()
+{
+  if (!pumpState)
+    return;
+
+  if (millis() - lastFillUpdate < 1000)
+    return;
+
+  lastFillUpdate = millis();
+  waterLevel = min(TANK_FULL_LIMIT, waterLevel + FILL_STEP);
+  mqttClient.publish(waterLevelTopic.c_str(), String(waterLevel).c_str(), true);
+
+  if (waterLevel >= TANK_FULL_LIMIT)
+  {
+    tankFull = true;
+    pumpState = false;
+    mqttClient.publish(tankTopic.c_str(), "FULL", true);
+    mqttClient.publish(pumpStatusTopic.c_str(), "OFF", true);
+    publishAck("TANK FULL");
+    publishAck("PUMP OFF");
+    Serial.println("TANK FULL -> PUMP FORCED OFF");
+    return;
+  }
+
+  mqttClient.publish(tankTopic.c_str(), "FILLING", true);
+  Serial.print("WATER LEVEL: ");
+  Serial.print(waterLevel);
+  Serial.println("%");
 }
 
 void setup()
@@ -408,6 +468,7 @@ void loop()
     connectMQTT();
 
   mqttClient.loop();
+  updateTankFilling();
 
   if (millis() - lastHeartbeat > 5000)
   {
